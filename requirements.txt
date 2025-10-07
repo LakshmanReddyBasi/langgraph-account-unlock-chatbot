@@ -1,0 +1,7 @@
+flask
+flask-cors
+langgraph
+requests
+twilio
+sendgrid
+python-dotenv
