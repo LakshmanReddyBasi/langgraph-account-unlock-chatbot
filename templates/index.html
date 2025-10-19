@@ -3,109 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account Unlock Chatbot</title>
+    <title>Account Unlock Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        #chatbox {
-            height: 70vh;
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        #chat-window { 
+            height: calc(100vh - 220px); 
+            max-height: 600px;
         }
         .message-bubble {
-            opacity: 0;
-            transform: translateY(20px);
-            animation: slide-up 0.5s forwards;
+            animation: fadeIn 0.5s ease-in-out;
         }
-        @keyframes slide-up {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .typing-indicator span {
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
         }
     </style>
 </head>
-<body class="bg-gray-100 font-sans flex items-center justify-center min-h-screen">
-    <div class="container mx-auto p-4 max-w-2xl w-full">
-        <div class="bg-white rounded-2xl shadow-2xl">
-            <div class="bg-blue-600 text-white p-5 rounded-t-2xl">
-                <h1 class="text-2xl font-bold text-center">Account Unlock Assistant</h1>
-            </div>
-            <div id="chatbox" class="p-4 overflow-y-auto">
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-2xl bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl flex flex-col border border-gray-200">
+        <header class="bg-slate-800 text-white p-4 rounded-t-2xl flex items-center space-x-3">
+            <div class="w-3 h-3 bg-green-400 rounded-full"></div>
+            <h1 class="text-xl font-bold">Account Unlock Assistant</h1>
+        </header>
+        
+        <div id="chat-window" class="flex-1 p-6 overflow-y-auto">
+            <div id="chat-messages" class="space-y-6">
                 <!-- Chat messages will appear here -->
             </div>
-            <div class="p-4 border-t">
-                <form id="message-form" class="flex items-center">
-                    <input type="text" id="user-input" class="flex-grow border rounded-l-full py-3 px-5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your message..." autocomplete="off">
-                    <button type="submit" class="bg-blue-600 text-white py-3 px-6 rounded-r-full hover:bg-blue-700 font-semibold transition-colors">Send</button>
-                </form>
-            </div>
         </div>
+
+        <footer class="p-4 border-t border-slate-200 bg-white/70 rounded-b-2xl">
+            <form id="chat-form" class="flex items-center gap-4">
+                <input type="text" id="message-input" class="flex-1 p-3 border border-slate-300 rounded-full focus:ring-2 focus:ring-indigo-500 focus:outline-none transition duration-300" placeholder="Type your message...">
+                <button type="submit" class="bg-indigo-600 text-white p-3 rounded-full hover:bg-indigo-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" /></svg>
+                </button>
+            </form>
+        </footer>
     </div>
 
-    <script>
-        const chatbox = document.getElementById('chatbox');
-        const messageForm = document.getElementById('message-form');
-        const userInput = document.getElementById('user-input');
-        const sessionId = `session_${new Date().getTime()}`;
+<script>
+    const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message-input');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatWindow = document.getElementById('chat-window');
 
-        function addMessage(sender, text) {
-            const messageWrapper = document.createElement('div');
-            messageWrapper.classList.add('message-bubble');
+    let sessionId = sessionStorage.getItem('chatSessionId') || `session_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem('chatSessionId', sessionId);
 
-            let content = '';
-            if (sender === 'bot') {
-                messageWrapper.classList.add('flex', 'justify-start', 'mb-4');
-                content = `
-                    <div class="bg-blue-500 text-white rounded-lg p-3 max-w-md">
-                        <p>${text.replace(/\n/g, '<br>')}</p>
-                    </div>
-                `;
-            } else {
-                messageWrapper.classList.add('flex', 'justify-end', 'mb-4');
-                content = `
-                    <div class="bg-gray-200 rounded-lg p-3 max-w-md">
-                        <p>${text.replace(/\n/g, '<br>')}</p>
-                    </div>
-                `;
-            }
-            messageWrapper.innerHTML = content;
-            chatbox.appendChild(messageWrapper);
-            chatbox.scrollTop = chatbox.scrollHeight;
+    function addMessage(sender, text) {
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message-bubble';
+        let formattedText = text.replace(/\n/g, '<br>');
+
+        if (sender === 'user') {
+            messageContainer.className += ' flex justify-end';
+            messageContainer.innerHTML = `<div class="bg-indigo-600 text-white p-3 rounded-xl max-w-xs md:max-w-md shadow-md">${formattedText}</div>`;
+        } else {
+            messageContainer.className += ' flex justify-start';
+            messageContainer.innerHTML = `<div class="bg-slate-200 text-slate-800 p-3 rounded-xl max-w-xs md:max-w-md shadow-md">${formattedText}</div>`;
         }
-        
-        async function sendMessage(text) {
-             addMessage('user', text);
-             userInput.value = '';
-             userInput.disabled = true;
+        chatMessages.appendChild(messageContainer);
+        scrollToBottom();
+    }
+    
+    function showTypingIndicator() {
+        const typingElement = document.createElement('div');
+        typingElement.id = 'typing-indicator';
+        typingElement.className = 'flex justify-start message-bubble';
+        typingElement.innerHTML = `
+            <div class="bg-slate-200 text-slate-500 p-3 rounded-xl shadow-md">
+                <div class="typing-indicator flex items-center space-x-1">
+                    <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                    <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                    <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                </div>
+            </div>`;
+        chatMessages.appendChild(typingElement);
+        scrollToBottom();
+    }
 
-             try {
-                const response = await fetch('http://127.0.0.1:5000/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, session_id: sessionId })
-                });
-                const data = await response.json();
-                addMessage('bot', data.reply);
-             } catch (error) {
-                console.error('Error:', error);
-                addMessage('bot', 'Sorry, I encountered an error. Please try again later.');
-             } finally {
-                userInput.disabled = false;
-                userInput.focus();
-             }
+    function removeTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.remove();
         }
+    }
 
-        messageForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const text = userInput.value.trim();
-            if (text) {
-                sendMessage(text);
-            }
-        });
+    function scrollToBottom() {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
 
-        // Initial greeting
-        setTimeout(() => {
-            addMessage('bot', 'Hello! How can I help you today? Try saying "My account is locked".');
-        }, 500);
-    </script>
+    async function sendMessage(message) {
+        addMessage('user', message);
+        messageInput.value = '';
+        showTypingIndicator();
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/chat', { // Use absolute URL to fix parsing error
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message, session_id: sessionId })
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const data = await response.json();
+            removeTypingIndicator();
+            addMessage('bot', data.reply);
+
+        } catch (error) {
+            console.error("Error:", error);
+            removeTypingIndicator();
+            addMessage('bot', 'Sorry, I encountered a connection error. Please check the server and try again.');
+        }
+    }
+
+    chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const message = messageInput.value.trim();
+        if (message) {
+            sendMessage(message);
+        }
+    });
+
+    // Initial greeting
+    setTimeout(() => {
+        addMessage('bot', 'Hello! How can I help you today? Try saying "My account is locked".');
+    }, 500);
+
+</script>
 </body>
 </html>
 

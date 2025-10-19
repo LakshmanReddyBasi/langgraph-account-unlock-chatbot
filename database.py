@@ -53,20 +53,26 @@ def seed_data():
     """Seeds the database with initial sample data if it's empty."""
     conn = get_db_connection()
     with conn.cursor(cursor_factory=DictCursor) as cur:
+        # Check if the first user already exists to prevent re-seeding
         cur.execute("SELECT 1 FROM users WHERE user_id = %s", ('john.doe',))
         user_exists = cur.fetchone()
         
         if not user_exists:
             # PostgreSQL uses %s for placeholders
-            cur.execute(
-                "INSERT INTO users (user_id, email, phone_number, status) VALUES (%s, %s, %s, %s)",
-                ('john.doe', '22pa1a0514@vishnu.edu.in', '+917680804985', 'locked')
-            )
-            cur.execute(
-                "INSERT INTO users (user_id, email, phone_number, status) VALUES (%s, %s, %s, %s)",
-                ('jane.doe', 'jane.doe@example.com', '+15557654321', 'active')
-            )
-            print("Database seeded with initial data.")
+            users_to_add = [
+                ('john.doe', '22pa1a0514@vishnu.edu.in', '+917680804985', 'locked'),
+                ('jane.doe', 'jane.doe@example.com', '+15557654321', 'active'),
+                ('alice.williams', 'alice.w@example.com', '+15551234567', 'locked'),
+                ('bob.jones', 'bob.j@example.com', '+15558901234', 'locked'),
+                ('charlie.brown', 'charlie.b@example.com', '+15555678901', 'locked')
+            ]
+            
+            for user in users_to_add:
+                cur.execute(
+                    "INSERT INTO users (user_id, email, phone_number, status) VALUES (%s, %s, %s, %s)",
+                    user
+                )
+            print("Database seeded with initial user data.")
         else:
             print("Data already exists, skipping seed.")
     conn.commit()
