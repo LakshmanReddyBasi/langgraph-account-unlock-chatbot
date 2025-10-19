@@ -3,14 +3,43 @@ from flask_cors import CORS
 import os
 from database import get_db_connection, initialize_database
 from services import send_email_otp, send_sms_otp
-from workflow import build_workflow, otp_verification_node, TicketState
+# The problematic import is removed from here
+from workflow import build_workflow, TicketState 
 import datetime
 import random
 from psycopg2.extras import DictCursor
 
-# Check if the DATABASE_URL is set, which implies a production environment
-# If not, it will fall back to SQLite, which doesn't exist anymore, so we initialize Postgres
-# This logic assumes we're always running with Postgres now.
+# This function is now defined directly inside app.py
+def otp_verification_node(state: TicketState, otp_from_user: str):
+    """
+    Verifies the OTP provided by the user against the database.
+    This is a helper function, not a graph node.
+    """
+    user_id = state['user_id']
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=DictCursor) as cur:
+            cur.execute("SELECT otp, expiry_time FROM otps WHERE user_id = %s", (user_id,))
+            otp_data = cur.fetchone()
+    
+    new_attempts = state.get('otp_attempts', 0) + 1
+    
+    if otp_data and otp_data['otp'] == otp_from_user and datetime.datetime.now(datetime.timezone.utc) < otp_data['expiry_time']:
+        return {
+            **state,
+            "verified": True,
+            "otp_attempts": new_attempts,
+            "action_log": state.get('action_log', []) + ["OTP verification successful."]
+        }
+    else:
+        return {
+            **state,
+            "verified": False,
+            "otp_attempts": new_attempts,
+            "action_log": state.get('action_log', []) + [f"OTP verification failed. Attempt {new_attempts}."]
+        }
+
+
+# Initialize the database on startup
 initialize_database()
 
 app = Flask(__name__)
@@ -52,7 +81,7 @@ def chat():
         return jsonify({"reply": bot_reply})
     return jsonify({"reply": "I can help with locked accounts. Try 'My account is locked'."})
 
-# --- API Endpoints (Updated for PostgreSQL) ---
+# --- API Endpoints (PostgreSQL version) ---
 @app.route('/check_account_status', methods=['POST'])
 def check_account_status():
     user_id = request.json.get('user_id')
@@ -80,10 +109,11 @@ def handle_send_otp():
     send_sms_otp(user['phone_number'], otp)
     return jsonify({"message": "OTP sent successfully."})
 
+# Note: The original /verify_otp endpoint is no longer called by the app, 
+# as the logic is now in otp_verification_node. It can be kept for API testing.
 @app.route('/verify_otp', methods=['POST'])
 def verify_otp():
-    user_id = request.json.get('user_id')
-    otp_submitted = request.json.get('otp')
+    user_id = request.json.get('user_id'); otp_submitted = request.json.get('otp')
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=DictCursor) as cur:
             cur.execute("SELECT otp, expiry_time FROM otps WHERE user_id = %s", (user_id,))
