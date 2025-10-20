@@ -10,3 +10,4 @@ psycopg2-binary
 groq
 faker
 openai
+bcrypt==4.1.3

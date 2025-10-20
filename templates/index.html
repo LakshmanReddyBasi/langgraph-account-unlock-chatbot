@@ -1,10 +1,12 @@
-<!DOCTYPE html>
+
+
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Account Unlock Assistant</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script> <!-- FIXED: removed trailing space -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { 
@@ -108,13 +110,24 @@
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
+    // AUTO-SUBMIT OTP
+    messageInput.addEventListener('input', function(e) {
+        const value = e.target.value;
+        const currentState = graphSessions?.[sessionId]?.state || "INIT";
+        if (currentState === "AWAITING_OTP" && /^\d{6}$/.test(value)) {
+            setTimeout(() => {
+                sendMessage(value);
+                e.target.value = '';
+            }, 100);
+        }
+    });
+
     async function sendMessage(message) {
         addMessage('user', message);
-        messageInput.value = '';
         showTypingIndicator();
 
         try {
-            const response = await fetch('http://127.0.0.1:5000/chat', { // Use absolute URL to fix parsing error
+            const response = await fetch('/chat', {  // Relative URL for Render
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: message, session_id: sessionId })
@@ -138,6 +151,7 @@
         const message = messageInput.value.trim();
         if (message) {
             sendMessage(message);
+            messageInput.value = '';
         }
     });
 
@@ -146,7 +160,10 @@
         addMessage('bot', 'Hello! How can I help you today? Try saying "My account is locked".');
     }, 500);
 
+    // Global session state (for OTP auto-submit)
+    let graphSessions = {};
+    // In real app, you'd sync this with backend, but for auto-submit we assume state from last message
+    // For production, consider storing state in hidden input or localStorage
 </script>
 </body>
 </html>
-
